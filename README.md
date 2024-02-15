@@ -1,1 +1,1 @@
-# BellabeatDataAnalysidGoogleCapstoneProject
+# BellabeatDataAnalysisGoogleCapstoneProject
