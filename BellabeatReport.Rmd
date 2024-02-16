@@ -1,0 +1,237 @@
+---
+title: "BellabeatAnalysis"
+author: "Shahenaz H"
+date: "2024-01-01"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+## Setting up environment
+Notes: Setting up environment by loading the packages
+```{r loading the packages}
+install.packages('tidyverse')
+install.packages('ggplot2')
+install.packages('here')
+install.packages('janitor')
+install.packages('dplyr')
+install.packages('rmarkdown')
+library(tidyverse)
+library(ggplot2)
+library(here)
+library(janitor)
+library(dplyr)
+library('rmarkdown')
+```
+## Load CSV files
+```{r read all the csv file and create the dataframe}
+daily_activity <- read.csv("dailyActivity_merged.csv")
+sleep_day <- read.csv("sleepDay_merged.csv")
+weight_log_info <- read.csv("weightLogInfo_merged.csv")
+daily_steps <- read.csv("dailySteps_merged.csv")
+hourly_steps <- read.csv("hourlySteps_merged.csv")
+daily_calories <- read.csv("dailyCalories_merged.csv")
+```
+
+## Explore a few key tables
+```{r Take a look at the dataframe daily_activity.Identify all the columns in the data frame.}
+head(daily_activity)
+colnames(daily_activity)
+```
+```{r Take a look at the dataframe sleep_day.Identify all the columns in the data frame.}
+head(sleep_day)
+colnames(sleep_day)
+```
+```{r Take a look at the dataframe weight_log_info.Identify all the columns in the data frame.}
+head(weight_log_info)
+
+```
+```{r Take a look at the dataframe daily_calories.Identify all the columns in the data frame.}
+head(daily_calories)
+```
+
+```{r Take a look at the dataframe daily_steps.Identify all the columns in the data frame.}
+head(daily_steps)
+```
+```{r Take a look at the dataframe hourly_steps.Identify all the columns in the data frame.}
+head(hourly_steps)
+```
+## Cleaning the data frames
+### 1.Removing LoggedActivitiesDistance and SedentaryAvtiveDistance as they are not used in analysis from daily_activity dataframe
+```{r Removing LoggedActivitiesDistance and SedentaryAvtiveDistance as they are not used in analysis from daily_activity dataframe}
+daily_activity <- subset(daily_activity,select = -c(LoggedActivitiesDistance, SedentaryActiveDistance))
+```
+```{r Rename column ActivityDate to Date}
+colnames(daily_activity)[2] = 'Date'
+```
+```{r Checking modified daily_activity dataframe}
+colnames(daily_activity)
+```
+### 2. Separating ActivityHour column from hourly_steps dataframe into Date and Hour column for analysis and check modified hourly_steps
+```{r Separating ActivityHour column from hourly_steps dataframe into Date and Hour column for analysis and check modified hourly_steps}
+hourly_steps <- hourly_steps %>% 
+  separate(ActivityHour, c("Date", "Hour"), sep = "^\\S*\\K")
+head(hourly_steps)
+```
+### 3.Removing SleepRecords and time as it is not used in analysis from sleep_day dataframe and check modified dataframe
+```{r Removing SleepRecords and time as it is not used in analysis from sleep_day dataframe and check modified dataframe}
+sleep_day <- subset(sleep_day,select = -c(TotalSleepRecords))
+sleep_day <- sleep_day %>% 
+  separate(SleepDay, c("Date"), sep = "^\\S*\\K")
+head(sleep_day)
+```
+## Understanding some summary statistics
+### How many unique participants are there in each dataframe? 
+
+```{r Unique participants in daily_activity}
+n_distinct(daily_activity$Id)
+```
+```{r Unique participants in sleep_day}
+n_distinct(sleep_day$Id)
+```
+
+```{r Unique participants in daily_steps}
+n_distinct(daily_steps$Id)
+```
+
+```{r Unique participants in daily_calories}
+n_distinct(daily_calories$Id)
+```
+
+```{r Unique participants in weight_log_info}
+n_distinct(weight_log_info$Id)
+```
+Note: There are only 8 participants in weight_log_info dataframe which is very less to draw any calculation. So we will exclude it from our analysis.
+
+## How many observations are there in each dataframe?
+```{r Number of observations in each dataframe}
+nrow(daily_activity)
+nrow(sleep_day)
+nrow(daily_calories)
+nrow(daily_steps)
+nrow(hourly_steps)
+
+```
+##Quick Summary
+
+```{r  For the daily activity dataframe:}
+daily_activity %>%  
+  select(TotalSteps,
+         TotalDistance,
+         SedentaryMinutes) %>%
+  summary()
+
+```
+```{r For the sleep dataframe:}
+sleep_day %>%  
+  select(TotalMinutesAsleep,
+         TotalTimeInBed) %>%
+  summary()
+```
+```{r For the daily_calories dataframe:}
+daily_calories %>%
+  select(Id,
+         Calories) %>%
+  summary()
+```
+```{r For the daily_steps dataframe:}
+daily_steps %>%
+  select(Id,
+         StepTotal) %>%
+  summary()
+```
+```{r For the hourly_steps dataframe}
+hourly_steps %>%
+  select(Id,
+         StepTotal) %>%
+  summary()
+```
+###Finding average steps taken by each participant
+```{r from daily_activity}
+mean_steps <- daily_activity %>%
+  group_by(Id)%>%
+  summarise(mean_steps = mean(TotalSteps)) %>%
+  select(Id, mean_steps) %>%
+  arrange(mean_steps) %>%
+  as.data.frame()
+head(mean_steps)
+```
+###Finding average sedentary minutes of each participant
+```{r From daily_activity}
+mean_sedentary_minutes <- daily_activity %>%
+  group_by(Id)%>%
+  summarise(mean_sedentary_minutes = mean(SedentaryMinutes)) %>%
+  select(Id, mean_sedentary_minutes) %>%
+  arrange(mean_sedentary_minutes) %>%
+  as.data.frame()
+head(mean_sedentary_minutes)
+```
+###Finding average sleep taken by each participant
+```{r From sleep_day}
+mean_sleep <- sleep_day %>%
+  group_by(Id)%>%
+  summarise(mean_sleep = mean(TotalMinutesAsleep)) %>%
+  select(Id, mean_sleep) %>%
+  arrange(mean_sleep) %>%
+  as.data.frame()
+head(mean_sleep)
+```
+###Finding actual minutes of sleep in percentage by each participant
+```{r}
+actual_sleep <- sleep_day %>%
+  group_by(Id) %>%
+  mutate(percent_sleep = (TotalMinutesAsleep/TotalTimeInBed)*100) %>%
+  select(Id, percent_sleep) %>%
+  summarize(actual_sleep = mean(percent_sleep)) %>%
+  arrange(actual_sleep) %>%
+  mutate_if(is.numeric, round, 2)
+  glimpse(actual_sleep)
+
+```
+Note : All participants sleep almost 90% of time except four. The least recorded is 63%
+
+### Merging these two datasets together to find additional insights
+
+```{r Combining sleep_day and daily_activity datasets}
+combined_data <- merge(sleep_day, daily_activity)
+glimpse(combined_data)
+```
+
+```{r Combining daily_steps and daily_calories}
+combined_steps_calories <- merge(daily_steps, daily_calories)
+head(combined_steps_calories)
+```
+## Data Visualisation
+###Plotting a few explorations
+
+```{r }
+ggplot(data=daily_activity, aes(x=TotalSteps, y=SedentaryMinutes)) + geom_point() +
+  labs(title = "Relation between TotalSteps and SedentaryMinutes ",
+       x = "TotalSteps", y = "SedentaryMinutes")
+```
+Note: The relation between SedentaryMinutes and TotalSteps taken by participant is non-linear. That means TotalSteps taken in a day doesnot depend on sedentary minutes. 
+
+```{r}
+ggplot(data=sleep_day, aes(x=TotalMinutesAsleep, y=TotalTimeInBed)) + geom_point() + labs(title = "Relation between TotalMinutesAsleep and TotalTimeInBed ",
+       x = "TotalMinutesAsleep", y = "TotalTimeInBed")
+```
+
+Note: The relation between TotalMinutesAsleep and TotalTimeInBed is linear. 
+
+```{r}
+ggplot(data=combined_steps_calories, aes(x=StepTotal, y=Calories)) + geom_point() + geom_smooth() + labs(title = "Relation between TotalSteps and Calories ",
+       x = "StepTotal", y = "Calories")
+```
+
+Note: The relation between StepTotal and Calories is increasing gradually. That means the more steps you take, the more calories you burn.
+
+```{r}
+ggplot(data=hourly_steps, mapping = aes(x=Hour, y=StepTotal))  +geom_col(fill = 'orange') + theme(axis.text.x = element_text(angle = 90)) +
+  labs(title = "Average Steps Taken per Hour of Day",
+       x = "Hour", y = "Average Steps")
+```
+
+Note: Evening 6 P.M, 7 P.M, 10 P.M steps taken are more. whereas morning 10 A.M and afternoon 12 P.M, 2 P.M steps taken are more.
+
+
